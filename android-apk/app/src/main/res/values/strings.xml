@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CircleSync</string>
+    <string name="config_help">Enter the CircleSync server URL provided by your friend, or your own deployment.\n\nOnce connected, sign in or create an account, then join a circle using its 6-character invite code.</string>
+</resources>

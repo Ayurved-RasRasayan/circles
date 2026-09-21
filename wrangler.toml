@@ -1,0 +1,28 @@
+# Cloudflare Pages + D1 + Durable Objects configuration
+# Replace <YOUR_D1_DATABASE_ID> after creating the database
+
+name = "circlesync"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "circlesync"
+database_id = "<YOUR_D1_DATABASE_ID>"
+
+# Durable Objects binding for real-time location sharing
+[[durable_objects.bindings]]
+name = "CIRCLE_LOCATIONS"
+class_name = "CircleLocationDO"
+
+# Durable Object migrations
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CircleLocationDO"]
+
+# Environment variables (set these after first deploy with: npx wrangler pages secret put)
+# JWT_SECRET - auto-generated if not set
+[vars]
+ENVIRONMENT = "production"
