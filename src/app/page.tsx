@@ -298,6 +298,21 @@ export default function Home() {
     if (watchIdRef.current !== null) return
 
     setIsSharing(true)
+
+    // Notify native Android service to start background sharing
+    try {
+      if (typeof window !== 'undefined' && (window as any).AndroidBridge?.startSharing) {
+        const bridgeWsUrl = "wss://circlesync-do.rasrasayan.workers.dev/ws?circle=" + (activeCircle?.id || "")
+        ;(window as any).AndroidBridge.startSharing(
+          bridgeWsUrl,
+          user?.id || "",
+          user?.username || "",
+          user?.displayName || "",
+          user?.avatarColor || "#10b981",
+          refreshValue * (refreshUnit === "seconds" ? 1000 : refreshUnit === "minutes" ? 60000 : 3600000)
+        )
+      }
+    } catch (e) { console.log('AndroidBridge not available') }
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, accuracy, heading, speed } = pos.coords
@@ -355,6 +370,13 @@ export default function Home() {
     }
     setIsSharing(false)
     socketRef.current?.send(JSON.stringify({ type: 'stop-sharing' }))
+
+    // Stop native Android service
+    try {
+      if (typeof window !== 'undefined' && (window as any).AndroidBridge?.stopSharing) {
+        ;(window as any).AndroidBridge.stopSharing()
+      }
+    } catch (e) {}
   }, [])
 
   const toggleSharing = () => {

@@ -22,13 +22,13 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.Arrays;
-
 public class MainActivity extends Activity {
 
     private static final String PREFS_NAME = "circlesync_prefs";
     private static final String KEY_SERVER_URL = "server_url";
     private static final int LOCATION_PERMISSION_REQUEST = 1001;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
+    private static final int BACKGROUND_LOCATION_REQUEST = 1003;
 
     private WebView webView;
     private View configView;
@@ -49,21 +49,28 @@ public class MainActivity extends Activity {
         } else {
             loadApp(savedUrl);
         }
+
+        requestNotificationPermission();
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
+            }
+        }
     }
 
     private void buildUi() {
-        // Root FrameLayout
         android.widget.FrameLayout root = new android.widget.FrameLayout(this);
         setContentView(root);
 
-        // WebView (hidden initially)
         webView = new WebView(this);
         webView.setVisibility(View.GONE);
         root.addView(webView, new android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
 
-        // Config view (ScrollView with vertical LinearLayout)
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundColor(0xFF059669);
         configView = scrollView;
@@ -77,24 +84,21 @@ public class MainActivity extends Activity {
                 ScrollView.LayoutParams.MATCH_PARENT,
                 ScrollView.LayoutParams.WRAP_CONTENT));
 
-        // Logo circle (white circle with globe emoji)
         LinearLayout logoBox = new LinearLayout(this);
         logoBox.setOrientation(LinearLayout.VERTICAL);
         logoBox.setGravity(android.view.Gravity.CENTER);
         LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(dp(96), dp(96));
         logoLp.bottomMargin = dp(32);
-        // Use a background drawable
         android.graphics.drawable.GradientDrawable logoBg = new android.graphics.drawable.GradientDrawable();
         logoBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         logoBg.setColor(0xFFFFFFFF);
         logoBox.setBackground(logoBg);
         TextView logoText = new TextView(this);
-        logoText.setText("🌍");
+        logoText.setText("");
         logoText.setTextSize(42);
         logoBox.addView(logoText);
         layout.addView(logoBox, logoLp);
 
-        // Title
         TextView title = new TextView(this);
         title.setText("CircleSync");
         title.setTextColor(0xFFFFFFFF);
@@ -102,7 +106,6 @@ public class MainActivity extends Activity {
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
         layout.addView(title);
 
-        // Subtitle
         TextView subtitle = new TextView(this);
         subtitle.setText("See your circle of friends on a live map");
         subtitle.setTextColor(0xCCFFFFFF);
@@ -114,7 +117,6 @@ public class MainActivity extends Activity {
         subLp.bottomMargin = dp(48);
         layout.addView(subtitle, subLp);
 
-        // URL input
         urlInput = new EditText(this);
         urlInput.setHint("https://your-circlesync-url.com");
         urlInput.setTextColor(0xFF1F2937);
@@ -129,7 +131,6 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(56)));
 
-        // Connect button
         connectButton = new Button(this);
         connectButton.setText("Connect");
         connectButton.setTextColor(0xFFFFFFFF);
@@ -160,7 +161,6 @@ public class MainActivity extends Activity {
             loadApp(url);
         });
 
-        // Help text
         TextView help = new TextView(this);
         help.setText("Enter the CircleSync server URL provided by your friend, or your own deployment.\n\nOnce connected, sign in or create an account, then join a circle using its 6-character invite code.");
         help.setTextColor(0xCCFFFFFF);
@@ -172,7 +172,6 @@ public class MainActivity extends Activity {
         helpLp.topMargin = dp(32);
         layout.addView(help, helpLp);
 
-        // Reset button (hidden by default)
         resetButton = new Button(this);
         resetButton.setText("Change server");
         resetButton.setTextColor(0xFFFFFFFF);
@@ -216,6 +215,8 @@ public class MainActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+
+        webView.addJavascriptInterface(new AndroidBridge(this), "AndroidBridge");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -284,6 +285,12 @@ public class MainActivity extends Activity {
             }
             if (!granted) {
                 Toast.makeText(this, "Location permission is needed to share your location with your circle", Toast.LENGTH_LONG).show();
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, BACKGROUND_LOCATION_REQUEST);
+                    }
+                }
             }
             if (webView.getVisibility() == View.VISIBLE && webView.getUrl() != null) {
                 webView.reload();
