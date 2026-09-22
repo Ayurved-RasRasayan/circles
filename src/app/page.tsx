@@ -303,8 +303,6 @@ export default function Home() {
     try {
       if (typeof window !== 'undefined' && (window as any).AndroidBridge?.startSharing) {
         const bridgeWsUrl = "wss://circlesync-do.rasrasayan.workers.dev/ws?circle=" + (activeCircle?.id || "")
-        console.log("[bridge] WS URL:", bridgeWsUrl)
-        try { (window as any).AndroidBridge?.showToast?.("WS: " + bridgeWsUrl) } catch {}
         ;(window as any).AndroidBridge.startSharing(
           bridgeWsUrl,
           user?.id || "",
@@ -355,7 +353,7 @@ export default function Home() {
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
     )
-  }, [toast])
+  }, [toast, activeCircle, user, refreshValue, refreshUnit])
 
   // Auto-start location sharing when entering a circle
   useEffect(() => {
