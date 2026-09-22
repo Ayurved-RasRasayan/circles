@@ -21,6 +21,7 @@ interface MapViewProps {
   members: MapMember[]
   followUserId?: string | null
   onRecenter?: (cb: () => void) => void
+  onFlyToUser?: (cb: (userId: string) => void) => void
 }
 
 // Create a circular avatar marker
@@ -67,7 +68,7 @@ function createAvatarIcon(color: string, label: string, isMe: boolean) {
   })
 }
 
-export default function MapView({ members, followUserId, onRecenter }: MapViewProps) {
+export default function MapView({ members, followUserId, onRecenter, onFlyToUser }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Map<string, L.Marker>>(new Map())
@@ -129,6 +130,23 @@ export default function MapView({ members, followUserId, onRecenter }: MapViewPr
       })
     }
   }, [members, followUserId, onRecenter])
+
+  // Expose flyToUser function  fly to a specific user's location
+  useEffect(() => {
+    console.log('[map-view] flyToUser effect running, prop present:', !!onFlyToUser)
+    if (onFlyToUser) {
+      onFlyToUser((userId: string) => {
+        const map = mapRef.current
+        if (!map) return
+        console.log('[map-view] cb invoked for userId:', userId, 'members count:', members.length)
+        const m = members.find((mm) => mm.userId === userId)
+        console.log('[map-view] member found:', !!m, 'coords:', m?.lat, m?.lng)
+        if (m && !isNaN(m.lat) && !isNaN(m.lng)) {
+          map.flyTo([m.lat, m.lng], 17, { animate: true, duration: 0.8 })
+        }
+      })
+    }
+  }, [members, onFlyToUser])
 
   // Update markers when members change
   useEffect(() => {

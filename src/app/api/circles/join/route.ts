@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDB, generateId } from '@/lib/db'
 import { parseSession } from '@/lib/auth'
 
-export const runtime = 'edge'
 
 export async function POST(req: NextRequest) {
   const cookieHeader = req.headers.get('cookie')

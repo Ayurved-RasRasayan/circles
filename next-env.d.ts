@@ -1,12 +1,6 @@
-# Cloudflare Pages environment types
-# This file tells TypeScript about Cloudflare bindings
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+/// <reference path="./.next/types/routes.d.ts" />
 
-interface CloudflareEnv {
-  DB: D1Database
-  CIRCLE_LOCATIONS: DurableObjectNamespace
-  ENVIRONMENT: string
-}
-
-declare global {
-  interface Env extends CloudflareEnv {}
-}
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.

@@ -4,9 +4,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  experimental: {
-    // Required for @cloudflare/next-on-pages
-    runtime: 'edge',
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 }
 

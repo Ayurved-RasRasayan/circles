@@ -69,13 +69,27 @@ export default function Home() {
   const [activeCircle, setActiveCircle] = useState<Circle | null>(null)
   const [liveMembers, setLiveMembers] = useState<LiveMember[]>([])
   const [loading, setLoading] = useState(true)
-  const [isSharing, setIsSharing] = useState(false)
+  const [isSharing, setIsSharing] = useState(true)
+  const [myPos, setMyPos] = useState<{ lat: number; lng: number; accuracy: number | null; heading: number | null; speed: number | null; timestamp: number } | null>(null)
   const [followMe, setFollowMe] = useState(true)
   const [socketConnected, setSocketConnected] = useState(false)
+  const [refreshValue, setRefreshValue] = useState<number>(() => {
+    if (typeof window === 'undefined') return 10
+    const v = Number(localStorage.getItem('circlesync_refresh_value'))
+    return v > 0 ? v : 10
+  })
+  const [refreshUnit, setRefreshUnit] = useState<'seconds' | 'minutes' | 'hours'>(() => {
+    if (typeof window === 'undefined') return 'seconds'
+    const u = localStorage.getItem('circlesync_refresh_unit')
+    return (u === 'minutes' || u === 'hours') ? u : 'seconds'
+  })
 
   const socketRef = useRef<WebSocket | null>(null)
   const watchIdRef = useRef<number | null>(null)
+  const lastSentRef = useRef<number>(0)
+  const lastPosRef = useRef<{ lat: number; lng: number; accuracy: number | null; heading: number | null; speed: number | null } | null>(null)
   const recenterRef = useRef<(() => void) | null>(null)
+  const flyToUserRef = useRef<((userId: string) => void) | null>(null)
 
   const loadCircles = useCallback(async () => {
     try {
@@ -201,7 +215,7 @@ export default function Home() {
 
     // Build WebSocket URL: ws://host/ws?circle=<circleId>&userId=...&username=...
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws?circle=${activeCircle.id}&userId=${encodeURIComponent(user.id)}&username=${encodeURIComponent(user.username)}&displayName=${encodeURIComponent(user.displayName)}&avatarColor=${encodeURIComponent(user.avatarColor)}`
+    const wsUrl = `wss://circlesync-do.rasrasayan.workers.dev/ws?circle=${activeCircle.id}&userId=${encodeURIComponent(user.id)}&username=${encodeURIComponent(user.username)}&displayName=${encodeURIComponent(user.displayName)}&avatarColor=${encodeURIComponent(user.avatarColor)}`
 
     let ws: WebSocket | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -272,7 +286,8 @@ export default function Home() {
       socketRef.current = null
       setSocketConnected(false)
     }
-  }, [view, activeCircle, user, toast])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, activeCircle, user])
 
   // -- Location sharing --
   const startLocationSharing = useCallback(() => {
@@ -286,6 +301,18 @@ export default function Home() {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, accuracy, heading, speed } = pos.coords
+
+        // Store latest position
+        lastPosRef.current = { lat: latitude, lng: longitude, accuracy, heading, speed }
+        setMyPos({ lat: latitude, lng: longitude, accuracy, heading, speed, timestamp: Date.now() })
+
+        // Throttle: only send at the user-selected interval
+        const UNIT_MS = { seconds: 1000, minutes: 60000, hours: 3600000 }
+        const intervalMs = Math.max(1000, refreshValue * UNIT_MS[refreshUnit])
+        const now = Date.now()
+        if (now - lastSentRef.current < intervalMs) return
+        lastSentRef.current = now
+
         socketRef.current?.send(JSON.stringify({
           type: 'location-update',
           lat: latitude,
@@ -313,6 +340,14 @@ export default function Home() {
     )
   }, [toast])
 
+  // Auto-start location sharing when entering a circle
+  useEffect(() => {
+    if (view !== 'circle' || !activeCircle || !socketConnected) return
+    if (isSharing && watchIdRef.current !== null) return
+    console.log('[auto-start] triggering startLocationSharing')
+    startLocationSharing()
+  }, [view, activeCircle, socketConnected, isSharing, startLocationSharing])
+
   const stopLocationSharing = useCallback(() => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
@@ -326,6 +361,12 @@ export default function Home() {
     if (isSharing) stopLocationSharing()
     else startLocationSharing()
   }
+
+  // Persist refresh settings
+  useEffect(() => {
+    localStorage.setItem('circlesync_refresh_value', String(refreshValue))
+    localStorage.setItem('circlesync_refresh_unit', refreshUnit)
+  }, [refreshValue, refreshUnit])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -368,10 +409,25 @@ export default function Home() {
 
   // ---------- CIRCLE VIEW ----------
   if (view === 'circle' && activeCircle && user) {
-    const mapMembers = liveMembers.map((m) => ({
+    const selfEntry = (isSharing && myPos) ? {
+      userId: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarColor: user.avatarColor,
+      lat: myPos.lat,
+      lng: myPos.lng,
+      accuracy: myPos.accuracy ?? undefined,
+      heading: myPos.heading ?? undefined,
+      timestamp: myPos.timestamp,
+      isMe: true,
+    } : null
+
+    const othersMap = liveMembers.filter((m) => m.userId !== user.id).map((m) => ({
       ...m,
-      isMe: m.userId === user.id,
+      isMe: false,
     }))
+
+    const mapMembers = selfEntry ? [selfEntry, ...othersMap] : othersMap
     return (
       <CircleView
         circle={activeCircle}
@@ -380,12 +436,19 @@ export default function Home() {
         mapMembers={mapMembers}
         isSharing={isSharing}
         socketConnected={socketConnected}
+        refreshValue={refreshValue}
+        refreshUnit={refreshUnit}
+        onRefreshValueChange={setRefreshValue}
+        onRefreshUnitChange={setRefreshUnit}
         followMe={followMe}
         onToggleFollow={() => setFollowMe(!followMe)}
         onToggleSharing={toggleSharing}
         onClose={closeCircle}
         onRecenter={(cb) => { recenterRef.current = cb }}
         onRecenterClick={() => recenterRef.current?.()}
+        onMemberClick={(userId) => { console.log('[page] onMemberClick fired:', userId, 'ref set:', !!flyToUserRef.current); flyToUserRef.current?.(userId) }}
+        onFlyToUserReady={(cb) => { console.log('[page] flyToUserReady received cb'); flyToUserRef.current = cb }}
+        myPos={myPos}
       />
     )
   }
@@ -451,7 +514,7 @@ function LoginView({ onAuth }: {
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">CircleSync</h1>
               <p className="mt-2 text-sm text-slate-600">
-                See your circle of friends on a live map — anywhere in the world.
+                See your circle of friends on a live map â€” anywhere in the world.
               </p>
             </div>
           </div>
@@ -483,7 +546,7 @@ function LoginView({ onAuth }: {
                       type="password"
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                      placeholder="••••••"
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢"
                     />
                   </div>
                 </TabsContent>
@@ -774,8 +837,13 @@ function DashboardView({ user, circles, onLogout, onCreate, onJoin, onOpenCircle
 // ============== CIRCLE VIEW ==============
 function CircleView({
   circle, user, liveMembers, mapMembers, isSharing, socketConnected,
-  followMe, onToggleFollow, onToggleSharing, onClose, onRecenter, onRecenterClick,
+  refreshValue, refreshUnit, onRefreshValueChange, onRefreshUnitChange,
+  followMe, onToggleFollow, onToggleSharing, onClose, onRecenter, onRecenterClick, onMemberClick, onFlyToUserReady, myPos,
 }: {
+  refreshValue: number
+  refreshUnit: 'seconds' | 'minutes' | 'hours'
+  onRefreshValueChange: (v: number) => void
+  onRefreshUnitChange: (u: 'seconds' | 'minutes' | 'hours') => void
   circle: Circle
   user: User
   liveMembers: LiveMember[]
@@ -788,10 +856,29 @@ function CircleView({
   onClose: () => void
   onRecenter: (cb: () => void) => void
   onRecenterClick: () => void
+  onMemberClick: (userId: string) => void
+  onFlyToUserReady: (cb: (userId: string) => void) => void
+  myPos: { lat: number; lng: number; accuracy: number | null; heading: number | null; speed: number | null; timestamp: number } | null
 }) {
   const { toast } = useToast()
   const [showMembers, setShowMembers] = useState(true)
-  const live = liveMembers.filter((m) => Date.now() - m.timestamp < 5 * 60 * 1000)
+  // Build self entry from myPos so we always appear online when sharing
+  const selfEntry = (myPos && isSharing) ? {
+    userId: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    avatarColor: user.avatarColor,
+    lat: myPos.lat,
+    lng: myPos.lng,
+    accuracy: myPos.accuracy ?? undefined,
+    heading: myPos.heading ?? undefined,
+    timestamp: myPos.timestamp,
+  } : null
+
+  const live = [
+    ...(selfEntry ? [selfEntry] : []),
+    ...liveMembers.filter((m) => m.userId !== user.id && Date.now() - m.timestamp < 5 * 60 * 1000),
+  ]
   const myLive = liveMembers.find((m) => m.userId === user.id)
 
   const copyCode = () => {
@@ -807,6 +894,7 @@ function CircleView({
           members={mapMembers}
           followUserId={followMe ? user.id : null}
           onRecenter={onRecenter}
+          onFlyToUser={onFlyToUserReady}
         />
       </div>
 
@@ -822,9 +910,9 @@ function CircleView({
               <div className="text-xs text-slate-500 flex items-center gap-1.5">
                 <span className={`inline-block w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                 {socketConnected ? (
-                  <span className="flex items-center gap-1"><Wifi className="h-3 w-3" /> Live · {live.length} online</span>
+                  <span className="flex items-center gap-1"><Wifi className="h-3 w-3" /> Live Â· {live.length} online</span>
                 ) : (
-                  <span className="flex items-center gap-1"><WifiOff className="h-3 w-3" /> Connecting…</span>
+                  <span className="flex items-center gap-1"><WifiOff className="h-3 w-3" /> Connectingâ€¦</span>
                 )}
               </div>
             </div>
@@ -856,6 +944,33 @@ function CircleView({
           <RefreshCw className="h-4 w-4 text-slate-700" />
         </Button>
       </div>
+      {/* Refresh interval control */}
+      <div className="absolute bottom-20 left-3 right-3 z-[1000] flex items-center justify-between gap-2 bg-white/95 backdrop-blur rounded-lg shadow-lg p-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-600 font-medium">Refresh</span>
+          <input
+            type="number"
+            min={1}
+            max={999}
+            value={refreshValue}
+            onChange={(e) => onRefreshValueChange(Math.max(1, Math.min(999, Number(e.target.value) || 1)))}
+            className="w-16 px-2 py-1 text-sm border border-slate-300 rounded text-center"
+          />
+          <select
+            value={refreshUnit}
+            onChange={(e) => onRefreshUnitChange(e.target.value as 'seconds' | 'minutes' | 'hours')}
+            className="px-2 py-1 text-sm border border-slate-300 rounded bg-white"
+          >
+            <option value="seconds">seconds</option>
+            <option value="minutes">minutes</option>
+            <option value="hours">hours</option>
+          </select>
+        </div>
+        <span className="text-xs text-slate-500">
+          every {refreshValue} {refreshUnit === 'seconds' ? (refreshValue === 1 ? 'second' : 'seconds') : refreshUnit === 'minutes' ? (refreshValue === 1 ? 'minute' : 'minutes') : (refreshValue === 1 ? 'hour' : 'hours')}
+        </span>
+      </div>
+
 
       {/* Sharing toggle (bottom) */}
       <div className="absolute bottom-0 left-0 right-0 z-[1000] p-3 bg-gradient-to-t from-slate-900/90 to-transparent">
@@ -870,7 +985,7 @@ function CircleView({
           {isSharing ? (
             <>
               <MapPin className="h-5 w-5 mr-2 animate-pulse" />
-              Sharing your location — tap to stop
+              Sharing your location â€” tap to stop
             </>
           ) : (
             <>
@@ -882,7 +997,7 @@ function CircleView({
         {isSharing && myLive && (
           <div className="text-center text-xs text-white/80 mt-2">
             {myLive.lat.toFixed(5)}, {myLive.lng.toFixed(5)}
-            {myLive.accuracy ? ` · ±${Math.round(myLive.accuracy)}m` : ''}
+            {myLive.accuracy ? ` Â· Â±${Math.round(myLive.accuracy)}m` : ''}
           </div>
         )}
       </div>
@@ -907,11 +1022,11 @@ function CircleView({
               </div>
               {live.length === 0 && (
                 <div className="px-2 py-3 text-xs text-slate-500 text-center">
-                  {isSharing ? 'Waiting for others…' : 'Start sharing to see live positions'}
+                  {isSharing ? 'Waiting for othersâ€¦' : 'Start sharing to see live positions'}
                 </div>
               )}
               {live.map((m) => (
-                <div key={m.userId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50">
+                <button type="button" onClick={() => { console.log('[page] clicked:', m.userId); onMemberClick(m.userId) }} key={m.userId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 text-left w-full cursor-pointer">
                   <Avatar className="h-7 w-7" style={{ backgroundColor: m.avatarColor }}>
                     <AvatarFallback style={{ backgroundColor: m.avatarColor, color: 'white' }} className="text-xs">
                       {m.displayName.charAt(0).toUpperCase()}
@@ -924,7 +1039,7 @@ function CircleView({
                     <div className="text-xs text-slate-500">{timeAgo(m.timestamp)}</div>
                   </div>
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                </div>
+                </button>
               ))}
               <Separator className="my-2" />
               <div className="text-xs font-semibold text-slate-500 px-2 py-1.5 uppercase tracking-wide">

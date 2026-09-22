@@ -1,3 +1,5 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare'
+
 // D1 Database helper
 // Replaces Prisma with raw SQL queries against Cloudflare D1
 
@@ -33,8 +35,7 @@ export interface CircleMemberRow {
 // On Cloudflare Pages, the binding is available via getRequestContext()
 export function getDB(request) {
   // @cloudflare/next-on-pages provides getRequestContext()
-  const { getRequestContext } = require('@cloudflare/next-on-pages')
-  const ctx = getRequestContext()
+  const ctx = getCloudflareContext()
   return ctx.env.DB
 }
 

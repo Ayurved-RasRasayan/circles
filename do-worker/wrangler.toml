@@ -1,0 +1,11 @@
+name = "circlesync-do"
+main = "index.ts"
+compatibility_date = "2024-09-23"
+
+[[durable_objects.bindings]]
+name = "CIRCLE_LOCATIONS"
+class_name = "CircleLocationDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CircleLocationDO"]

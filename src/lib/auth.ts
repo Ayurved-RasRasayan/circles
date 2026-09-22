@@ -103,7 +103,8 @@ export function createSessionCookie(userId: string, username: string): string {
 }
 
 export function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`
+  const expires = 'Thu, 01 Jan 1970 00:00:00 GMT'
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0; Expires=${expires}`
 }
 
 export function parseSession(cookieHeader: string | null): { userId: string; username: string } | null {

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDB, generateId, generateInviteCode } from '@/lib/db'
 import { parseSession } from '@/lib/auth'
 
-export const runtime = 'edge'
 
 async function getUniqueInviteCode(db): Promise<string> {
   let code = generateInviteCode()

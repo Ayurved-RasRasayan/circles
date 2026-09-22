@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "circlesync",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "circlesync"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "circlesync",
+      "database_id": "03202107-49a5-4488-a917-ba65016aadf2"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CIRCLE_LOCATIONS",
+        "class_name": "CircleLocationDO",
+        "script_name": "circlesync-do"
+      }
+    ]
+  }
+}

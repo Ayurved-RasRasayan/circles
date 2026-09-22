@@ -5,3 +5,14 @@ node_modules/
 .dev.vars
 *.log
 .DS_Store
+
+.open-next/
+
+# Local-only files
+admin.html
+serve-admin.ps1
+push-to-github.ps1
+deploy.ps1
+*.bak
+nop-build-log.json
+.env.local

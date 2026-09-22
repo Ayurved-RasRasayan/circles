@@ -4,16 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx @cloudflare/next-on-pages",
-    "preview": "npx wrangler pages dev",
-    "deploy": "npm run build && npx wrangler pages deploy",
+    "build": "next build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "wrangler deploy",
     "lint": "eslint .",
     "db:create": "npx wrangler d1 create circlesync",
     "db:migrate": "npx wrangler d1 execute circlesync --file=schema.sql",
     "db:migrate:remote": "npx wrangler d1 execute circlesync --remote --file=schema.sql"
   },
   "dependencies": {
-    "@cloudflare/next-on-pages": "^1.13.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -48,7 +47,7 @@
     "framer-motion": "^12.23.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.525.0",
-    "next": "^14.2.15",
+    "next": "15.5.2",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -56,18 +55,20 @@
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "tw-animate-css": "^1.3.5",
     "zod": "^4.0.2"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^9",
-    "eslint-config-next": "^14.2.15",
-    "tailwindcss": "^3.4.15",
+    "eslint-config-next": "15.5.2",
+    "tailwindcss": "^4",
     "typescript": "^5",
-    "wrangler": "^3.80.0"
+    "wrangler": "^4.136.0"
   }
 }
