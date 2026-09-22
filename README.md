@@ -1,251 +1,219 @@
-# CircleSync — Cloudflare Deployment Guide
+# CircleSync
 
-Deploy CircleSync permanently on Cloudflare's free tier. After deployment, you get a permanent URL that works with the Android APK.
+See your circle of friends on a live map - anywhere in the world.
+
+Create a circle, share your invite code, and start tracking each other's locations in real-time.
+
+**Live demo:** https://circlesync.rasrasayan.workers.dev
+
+---
 
 ## Architecture
 
-| Component | Cloudflare Service | Free Tier |
-|-----------|-------------------|-----------|
-| Frontend + API (Next.js) | Cloudflare Pages | ✅ Unlimited |
-| Database (SQLite → D1) | Cloudflare D1 | ✅ 5GB, 5M reads/day |
-| Real-time (Socket.io → Durable Objects) | Cloudflare Durable Objects | ✅ Included |
-| WebSocket routing | Pages Functions | ✅ Included |
+CircleSync is a Next.js 15 app deployed on **Cloudflare Workers** via OpenNext.
 
-**Total monthly cost: $0** (within free tier limits)
+| Component | Service | Purpose |
+|---|---|---|
+| Frontend + API | Cloudflare Workers (OpenNext) | Next.js 15, React 18, Tailwind v4 |
+| Database | Cloudflare D1 (SQLite) | Users, circles, memberships |
+| Real-time | Cloudflare Durable Objects | WebSocket per circle, location broadcast |
+| Static assets | Cloudflare Workers Assets | Icons, APK, manifest |
+| Admin | Secret-key API + local HTML tool | User management |
+
+**Cost:** $0 - fits comfortably within Cloudflare's free tier.
+---
+
+## Features
+
+- **Auth** - register, login, logout (PBKDF2-SHA256 password hashing, signed HttpOnly cookies)
+- **Circles** - create, list, join via 6-character invite codes
+- **Live map** - Leaflet map showing all circle members currently sharing
+- **Click-to-zoom** - click any user in "Live now" to fly the map to their marker
+- **Configurable refresh** - pick location broadcast interval (seconds / minutes / hours)
+- **Auto-start sharing** - sharing starts automatically when entering a circle
+- **Self-marker** - you always see your own marker + "online" status when sharing
+- **Admin API** - list + cascade-delete users via /api/admin/users
 
 ---
 
-## Prerequisites
+## Deployment
 
-1. A **Cloudflare account** (free) — sign up at https://dash.cloudflare.com/sign-up
-2. **Node.js 18+** installed on your computer — download from https://nodejs.org/
-3. The **CircleSync deployment package** (this folder)
+### Prerequisites
 
----
+- Node.js 18+
+- Cloudflare account (free) - https://dash.cloudflare.com/sign-up
+- Git for Windows (for the Windows PATH workaround)
+- PowerShell 5+ (Windows) or a POSIX shell (macOS / Linux)
 
-## Step-by-step Deployment
+### First-time setup
 
-### Step 1: Install dependencies
+    npm install --legacy-peer-deps
+    npx wrangler login
+    npx wrangler d1 create circlesync
+    # -> paste the database_id into wrangler.jsonc
+    npx wrangler d1 execute circlesync --remote --file=schema.sql
+    cd do-worker
+    npx wrangler deploy --config wrangler.toml
+    cd ..
+    npx wrangler secret put ADMIN_KEY
+    # -> paste a random string
+    .\deploy.ps1
 
-Open a terminal in this folder and run:
+See SETUP.md for a detailed walkthrough.
+### Redeploying after code changes
 
-```bash
-npm install
-```
+    .\deploy.ps1
 
-### Step 2: Log in to Cloudflare
+That runs:
 
-```bash
-npx wrangler login
-```
+1. npm run build - Next.js production build
+2. npx opennextjs-cloudflare build - convert to Cloudflare Worker bundle
+3. npx wrangler deploy - upload to Cloudflare
 
-This opens your browser. Click **"Allow"** to authorize the Wrangler CLI.
+### Pushing to GitHub
 
-### Step 3: Create the D1 database
+    .\push-to-github.ps1
 
-```bash
-npx wrangler d1 create circlesync
-```
-
-This outputs something like:
-```
-✅ Successfully created DB 'circlesync'
-[[d1_databases]]
-binding = "DB"
-database_name = "circlesync"
-database_id = "xxxx-xxxx-xxxx-xxxx-xxxx"
-```
-
-**Copy the `database_id` value** (the long string of letters/numbers).
-
-### Step 4: Update wrangler.toml
-
-Open `wrangler.toml` in a text editor. Find this line:
-```toml
-database_id = "<YOUR_D1_DATABASE_ID>"
-```
-
-Replace `<YOUR_D1_DATABASE_ID>` with the actual ID from Step 3.
-
-### Step 5: Create the database tables
-
-```bash
-npx wrangler d1 execute circlesync --remote --file=schema.sql
-```
-
-You should see "3 queries executed" (creating the User, Circle, and CircleMember tables).
-
-### Step 6: Build the app for Cloudflare
-
-```bash
-npm run build
-```
-
-This uses `@cloudflare/next-on-pages` to convert the Next.js app into a Cloudflare Pages-compatible format.
-
-### Step 7: Deploy to Cloudflare Pages
-
-```bash
-npx wrangler pages deploy
-```
-
-- When asked for a **project name**, type: `circlesync`
-- When asked for a **production branch**, type: `main` (or press Enter)
-- Wait ~1-2 minutes for the deployment to complete
-
-**At the end, you'll see your permanent URL:**
-```
-✅ Deployment complete! Take a peek over at https://circlesync-xxx.pages.dev
-```
-
-**🎉 That URL is your permanent CircleSync server URL!** Copy it — you'll need it for the APK and to share with friends.
-
-### Step 8: Test your deployment
-
-Open the URL in your browser. You should see the CircleSync login page.
-
-Sign up → Create a circle → Get your invite code → Share with friends!
+Guards against committing local-only files (admin tooling, backups, secrets).
 
 ---
 
-## After Deployment: Updating the APK
+## Admin Tools
 
-The CircleSync APK asks for the server URL on first launch. After deploying:
+### List and delete users
 
-1. Download the APK from this package (`public/downloads/CircleSync.apk`)
-2. Install it on your Android phone
-3. On first launch, enter your Cloudflare URL (e.g., `https://circlesync-xxx.pages.dev`)
-4. Sign up and start using CircleSync!
+Start the local admin web server:
 
-### Optional: Bake the URL into the APK
+    .\serve-admin.ps1
 
-If you want the APK to skip the URL input and connect automatically, edit the APK source in `android-apk/` and rebuild:
+Then open http://localhost:8080/admin.html and enter your ADMIN_KEY.
 
-1. Open `android-apk/app/src/main/java/com/circlesync/app/MainActivity.java`
-2. Find the line: `String savedUrl = prefs.getString(KEY_SERVER_URL, "");`
-3. Change it to: `String savedUrl = prefs.getString(KEY_SERVER_URL, "https://circlesync-xxx.pages.dev");`
-4. Rebuild using the build script: `bash build-apk.sh`
+The tool lets you:
+
+- View every user (username, display name, ID, membership count)
+- Delete a user with one click (cascades to memberships and any circles they created)
+
+### Direct API access
+
+    $key = "your-admin-key"
+    Invoke-WebRequest -Uri "https://circlesync.rasrasayan.workers.dev/api/admin/users" -Headers @{ "x-admin-key" = $key } | ConvertFrom-Json
+---
+
+## Project Structure
+
+    circles/
+      src/
+        app/
+          page.tsx               Main app (auth, dashboard, map, WebSocket)
+          layout.tsx             Root layout
+          globals.css            Tailwind v4 styles
+          api/
+            auth/                register, login, logout, me
+            circles/             list, create, join
+            admin/               list users, delete user (secret-key protected)
+        components/
+          map-view.tsx           Leaflet map with flyToUser
+          ui/                    shadcn/ui primitives
+        do/
+          circle-location.ts     Original DO class (reference)
+        hooks/                   React hooks
+        lib/
+          db.ts                  D1 helper (getCloudflareContext)
+          auth.ts                Password hashing, session cookies
+          utils.ts
+      do-worker/
+        index.ts                 Deployed DO class (hibernation-safe WebSocket)
+        wrangler.toml            DO Worker config
+      public/                    Static assets (icons, APK, manifest)
+      android-apk/               Android APK source
+      wrangler.jsonc             Main Worker config
+      open-next.config.ts        OpenNext adapter config
+      schema.sql                 D1 schema
+      package.json
 
 ---
 
-## Managing Your Deployment
+## Scripts (local, gitignored)
 
-### View your app
-```bash
-npx wrangler pages deployment list --project-name=circlesync
-```
+| Script | Purpose |
+|---|---|
+| deploy.ps1 | Rebuild + redeploy to Cloudflare |
+| push-to-github.ps1 | Safe commit + push (guards secrets) |
+| serve-admin.ps1 | Local HTTP server for admin.html |
+| admin.html | Click-to-delete user management UI |
 
-### View database
-```bash
-# List all users
-npx wrangler d1 execute circlesync --remote --command="SELECT * FROM User"
+These files are NOT pushed to GitHub (see .gitignore).
+---
 
-# List all circles
-npx wrangler d1 execute circlesync --remote --command="SELECT * FROM Circle"
-```
+## Cloudflare Resources
 
-### Push updates
-After making code changes:
-```bash
-npm run build
-npx wrangler pages deploy
-```
+| Resource | Name | Notes |
+|---|---|---|
+| Worker (main) | circlesync | Next.js app via OpenNext |
+| Worker (DO) | circlesync-do | Durable Object, WebSocket per circle |
+| D1 database | circlesync | User, Circle, CircleMember tables |
+| Secret | ADMIN_KEY | Admin API authentication |
 
-### Delete everything (start fresh)
-```bash
-npx wrangler pages project delete circlesync
-npx wrangler d1 delete circlesync
-```
+---
+
+## Security
+
+- Passwords hashed with PBKDF2-SHA256 (100k iterations, Web Crypto API)
+- Session cookies: HttpOnly, Secure, SameSite=Lax, 30-day expiry
+- Admin API requires the x-admin-key header (Cloudflare secret)
+- Location data is only shared with members of circles you have joined
+- The Durable Object keeps positions in memory only - no location history stored
+- When you stop sharing, your position disappears
 
 ---
 
 ## Free Tier Limits
 
-Cloudflare's free tier is very generous. CircleSync will stay free unless you have:
-- **>100,000 page views per day** (Pages)
-- **>5 million database reads per day** (D1)
-- **>100,000 WebSocket connections per day** (Durable Objects)
+| Service | Free tier |
+|---|---|
+| Workers requests | 100,000 / day |
+| D1 reads | 5,000,000 / day |
+| D1 writes | 100,000 / day |
+| Durable Object requests | 1,000,000 / month |
+| Durable Object duration | 400,000 GB-s / month |
 
-For a friends-and-family circle, you'll never hit these limits.
+For a friends-and-family circle, you will never come close.
 
 ---
 
 ## Troubleshooting
 
-### "Error: wrangler not found"
-Run `npm install` first, then use `npx wrangler` (not just `wrangler`).
+### Build fails on Windows with spawn npx ENOENT
 
-### Database errors after deploy
-Make sure you ran Step 5 with `--remote` flag. Without it, the tables are only created locally.
+The OpenNext CLI calls npx vercel build internally, which fails on Windows when it cannot find npx. The deploy.ps1 script handles this by hiding open-next.config.ts during wrangler deploy.
 
-### WebSocket not connecting
-- Make sure your Cloudflare Pages project has the Durable Object binding configured (check `wrangler.toml`)
-- Check browser console for WebSocket errors
-- Try redeploying: `npm run build && npx wrangler pages deploy`
+### wrangler deploy fails with "Completion token has already been consumed"
 
-### Build fails with "next-on-pages" error
-- Delete `.next/` and `.vercel/` folders: `rm -rf .next .vercel`
-- Run `npm install` again
-- Retry `npm run build`
+Transient Cloudflare API error. Just retry: npx wrangler deploy
 
-### "Durable Object class not found"
-Make sure `wrangler.toml` has the migration section:
-```toml
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["CircleLocationDO"]
-```
+### WebSocket shows "Connecting..." forever
+
+Check DevTools -> Network -> WS. Look for wss://circlesync-do.<your-subdomain>.workers.dev/ws. Status 101 = connected.
+
+### Geolocation times out on desktop
+
+Desktop browsers use WiFi/IP triangulation. Increase the timeout in src/app/page.tsx.
 
 ---
 
-## File Structure
+## License
 
-```
-cloudflare-deploy/
-├── wrangler.toml          ← Cloudflare config (edit database_id)
-├── schema.sql             ← D1 database schema
-├── package.json           ← Dependencies & scripts
-├── next.config.js         ← Next.js config for edge runtime
-├── schema.sql             ← Database migration
-├── src/
-│   ├── app/
-│   │   ├── page.tsx       ← Main app (login, dashboard, map)
-│   │   ├── layout.tsx     ← Root layout
-│   │   ├── globals.css    ← Tailwind styles
-│   │   └── api/           ← REST API routes (edge runtime)
-│   │       ├── auth/      ← register, login, logout, me
-│   │       └── circles/   ← create, join
-│   ├── components/
-│   │   ├── map-view.tsx   ← Leaflet map component
-│   │   └── ui/            ← shadcn/ui components
-│   ├── do/
-│   │   └── circle-location.ts  ← Durable Object (replaces Socket.io)
-│   ├── hooks/             ← React hooks
-│   └── lib/
-│       ├── db.ts          ← D1 database helper
-│       ├── auth.ts        ← Web Crypto auth (edge-compatible)
-│       └── utils.ts       ← Utilities
-├── functions/
-│   └── ws/[[route]].ts    ← Pages Function (WebSocket routing)
-├── public/                ← Static assets (icons, manifest, APK)
-└── android-apk/           ← Android APK source code
-```
+MIT
 
 ---
 
-## Security Notes
+## Credits
 
-- Passwords are hashed with PBKDF2-SHA256 (100,000 iterations) using Web Crypto API
-- Sessions use signed HttpOnly cookies
-- Location data is only shared with members of circles you join
-- The Durable Object only keeps locations in memory while you're actively sharing
-- No location history is stored — when you stop sharing, your position disappears
-
----
-
-## Need Help?
-
-If something doesn't work, check:
-1. The browser console (F12 → Console) for errors
-2. Cloudflare dashboard → Pages → your project → Functions logs
-3. `npx wrangler tail` to see real-time logs from your deployment
+- Next.js 15 - https://nextjs.org
+- Cloudflare Workers - https://workers.cloudflare.com
+- Cloudflare D1 - https://developers.cloudflare.com/d1/
+- Cloudflare Durable Objects - https://developers.cloudflare.com/durable-objects/
+- OpenNext Cloudflare adapter - https://opennext.js.org/cloudflare
+- Leaflet - https://leafletjs.com
+- shadcn/ui - https://ui.shadcn.com
+- Tailwind CSS v4 - https://tailwindcss.com
