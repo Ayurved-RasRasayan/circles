@@ -217,3 +217,4 @@ MIT
 - Leaflet - https://leafletjs.com
 - shadcn/ui - https://ui.shadcn.com
 - Tailwind CSS v4 - https://tailwindcss.com
+<!-- Deployed via Cloudflare Workers Builds -->
