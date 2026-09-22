@@ -194,6 +194,10 @@ public class LocationService extends Service {
             String url = wsUrl + "&userId=" + enc(userId) + "&username=" + enc(username)
                     + "&displayName=" + enc(displayName) + "&avatarColor=" + enc(avatarColor);
             Log.i(TAG, "Connecting to: " + url);
+            try {
+                String shortUrl = url.length() > 60 ? url.substring(0, 60) + "..." : url;
+                updateNotification("Connecting: " + shortUrl);
+            } catch (Exception ignored) {}
 
             Request request = new Request.Builder().url(url).build();
             webSocket = okHttpClient.newWebSocket(request, new WebSocketListener() {
