@@ -233,7 +233,14 @@ export default function Home() {
         try {
           const data = JSON.parse(event.data)
           if (data.type === 'circle-state') {
-            setLiveMembers(data.members || [])
+            const byId = new Map<string, LiveMember>()
+            for (const m of (data.members || [])) {
+              const existing = byId.get(m.userId)
+              if (!existing || (m.timestamp || 0) > (existing.timestamp || 0)) {
+                byId.set(m.userId, m)
+              }
+            }
+            setLiveMembers(Array.from(byId.values()))
           } else if (data.type === 'location-update') {
             const loc: LiveMember = {
               userId: data.userId,
@@ -905,10 +912,18 @@ function CircleView({
     timestamp: myPos.timestamp,
   } : null
 
-  const live = [
-    ...(selfEntry ? [selfEntry] : []),
-    ...liveMembers.filter((m) => m.userId !== user.id && Date.now() - m.timestamp < 5 * 60 * 1000),
-  ]
+  // Merge self entry + other members, then dedupe by userId (keep latest)
+  const liveMap = new Map<string, any>()
+  if (selfEntry) liveMap.set(user.id, selfEntry)
+  for (const m of liveMembers) {
+    if (m.userId === user.id) continue
+    if (Date.now() - m.timestamp >= 5 * 60 * 1000) continue
+    const existing = liveMap.get(m.userId)
+    if (!existing || (m.timestamp || 0) > (existing.timestamp || 0)) {
+      liveMap.set(m.userId, m)
+    }
+  }
+  const live = Array.from(liveMap.values())
   const myLive = liveMembers.find((m) => m.userId === user.id)
 
   const copyCode = () => {
