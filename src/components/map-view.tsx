@@ -133,14 +133,11 @@ export default function MapView({ members, followUserId, onRecenter, onFlyToUser
 
   // Expose flyToUser function  fly to a specific user's location
   useEffect(() => {
-    console.log('[map-view] flyToUser effect running, prop present:', !!onFlyToUser)
     if (onFlyToUser) {
       onFlyToUser((userId: string) => {
         const map = mapRef.current
         if (!map) return
-        console.log('[map-view] cb invoked for userId:', userId, 'members count:', members.length)
         const m = members.find((mm) => mm.userId === userId)
-        console.log('[map-view] member found:', !!m, 'coords:', m?.lat, m?.lng)
         if (m && !isNaN(m.lat) && !isNaN(m.lng)) {
           map.flyTo([m.lat, m.lng], 17, { animate: true, duration: 0.8 })
         }

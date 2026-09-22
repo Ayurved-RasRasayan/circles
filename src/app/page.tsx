@@ -468,8 +468,16 @@ export default function Home() {
         onClose={closeCircle}
         onRecenter={(cb) => { recenterRef.current = cb }}
         onRecenterClick={() => recenterRef.current?.()}
-        onMemberClick={(userId) => { console.log('[page] onMemberClick fired:', userId, 'ref set:', !!flyToUserRef.current); flyToUserRef.current?.(userId) }}
-        onFlyToUserReady={(cb) => { console.log('[page] flyToUserReady received cb'); flyToUserRef.current = cb }}
+        onMemberClick={(userId) => {
+          // Pause auto-follow if the user clicked someone other than themselves
+          if (userId === user.id) {
+            setFollowMe(true)
+          } else {
+            setFollowMe(false)
+          }
+          flyToUserRef.current?.(userId)
+        }}
+        onFlyToUserReady={(cb) => { flyToUserRef.current = cb }}
         myPos={myPos}
       />
     )
@@ -1048,7 +1056,7 @@ function CircleView({
                 </div>
               )}
               {live.map((m) => (
-                <button type="button" onClick={() => { console.log('[page] clicked:', m.userId); onMemberClick(m.userId) }} key={m.userId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 text-left w-full cursor-pointer">
+                <button type="button" onClick={() => onMemberClick(m.userId)} key={m.userId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 text-left w-full cursor-pointer">
                   <Avatar className="h-7 w-7" style={{ backgroundColor: m.avatarColor }}>
                     <AvatarFallback style={{ backgroundColor: m.avatarColor, color: 'white' }} className="text-xs">
                       {m.displayName.charAt(0).toUpperCase()}
