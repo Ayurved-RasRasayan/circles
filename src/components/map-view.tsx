@@ -97,7 +97,7 @@ export default function MapView({ members, followUserId, onRecenter, onFlyToUser
       'Streets': streetsLayer,
       'Satellite': satelliteLayer,
       'Terrain': terrainLayer,
-    }, {}, { position: 'topright', collapsed: true }).addTo(map)
+    }, {}, { position: 'bottomleft', collapsed: true }).addTo(map)
 
     // Add locate control
     L.control.locate = function () {} as any
