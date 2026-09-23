@@ -1017,6 +1017,48 @@ function CircleView({
       </div>
 
 
+      {/* Coordinate bar with copy button */}
+      {myPos && (
+        <div className="absolute bottom-32 left-3 right-3 z-[1000] flex items-center gap-2 bg-white/95 backdrop-blur rounded-lg shadow-lg p-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span className="text-xs font-mono text-slate-700 truncate flex-1">
+            {myPos.lat.toFixed(6)}, {myPos.lng.toFixed(6)}
+          </span>
+          <button
+            type="button"
+            onClick={async () => {
+              const text = `${myPos.lat.toFixed(6)}, ${myPos.lng.toFixed(6)}`
+              try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  await navigator.clipboard.writeText(text)
+                } else {
+                  const ta = document.createElement('textarea')
+                  ta.value = text
+                  document.body.appendChild(ta)
+                  ta.select()
+                  document.execCommand('copy')
+                  document.body.removeChild(ta)
+                }
+                toast({ title: 'Coordinates copied!', description: text })
+              } catch (e) {
+                toast({ title: 'Copy failed', description: text, variant: 'destructive' })
+              }
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors flex items-center gap-1 shrink-0"
+            title="Copy coordinates to clipboard"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+          </button>
+        </div>
+      )}
+
       {/* Sharing toggle (bottom) */}
       <div className="absolute bottom-0 left-0 right-0 z-[1000] p-3 bg-gradient-to-t from-slate-900/90 to-transparent">
         <Button
