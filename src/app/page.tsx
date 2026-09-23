@@ -948,16 +948,16 @@ function CircleView({
         <Button variant="secondary" size="icon" onClick={onClose} className="pointer-events-auto bg-white/95 hover:bg-white shadow-lg">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="pointer-events-auto w-[calc(50%-8px)] max-w-md bg-white/95 backdrop-blur rounded-lg px-3 py-2 shadow-lg">
+        <div className="pointer-events-auto flex-1 min-w-0 max-w-md md:w-[calc(50%-8px)] bg-white/95 backdrop-blur rounded-lg px-3 py-2 shadow-lg">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <div className="font-bold text-slate-900 truncate text-sm">{circle.name}</div>
               <div className="text-xs text-slate-500 flex items-center gap-1.5">
                 <span className={`inline-block w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                 {socketConnected ? (
-                  <span className="flex items-center gap-1"><Wifi className="h-3 w-3" /> Live Â· {live.length} online</span>
+                  <span className="flex items-center gap-1"><Wifi className="h-3 w-3" /> Live ({live.length} online)</span>
                 ) : (
-                  <span className="flex items-center gap-1"><WifiOff className="h-3 w-3" /> Connectingâ€¦</span>
+                  <span className="flex items-center gap-1"><WifiOff className="h-3 w-3" /> Connecting...</span>
                 )}
               </div>
             </div>
