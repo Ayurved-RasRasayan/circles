@@ -1101,7 +1101,7 @@ function CircleView({
         </Button>
       </div>
       {showMembers && (
-        <div className="absolute top-32 right-3 z-[1000] w-64 max-h-[50vh] bg-white/95 backdrop-blur rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute top-20 left-3 z-[1000] w-56 max-h-[50vh] bg-white/95 backdrop-blur rounded-lg shadow-xl overflow-hidden">
           <ScrollArea className="h-full max-h-[50vh]">
             <div className="p-2">
               <div className="text-xs font-semibold text-slate-500 px-2 py-1.5 uppercase tracking-wide">
