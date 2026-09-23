@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-providers'
 
 export interface MapMember {
   userId: string
@@ -85,10 +86,18 @@ export default function MapView({ members, followUserId, onRecenter, onFlyToUser
       attributionControl: true,
     })
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map)
+    // Multiple base layers with a switcher
+    const streetsLayer = L.tileLayer.provider('OpenStreetMap.Mapnik')
+    const satelliteLayer = L.tileLayer.provider('Esri.WorldImagery')
+    const terrainLayer = L.tileLayer.provider('OpenTopoMap')
+
+    streetsLayer.addTo(map)
+
+    L.control.layers({
+      'Streets': streetsLayer,
+      'Satellite': satelliteLayer,
+      'Terrain': terrainLayer,
+    }, {}, { position: 'topright', collapsed: true }).addTo(map)
 
     // Add locate control
     L.control.locate = function () {} as any
