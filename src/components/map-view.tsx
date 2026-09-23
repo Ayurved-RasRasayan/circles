@@ -3,7 +3,16 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import 'leaflet-providers'
+
+// Attach L to window BEFORE loading the plugin.
+// leaflet-providers patches the global L, but in ES module bundlers
+// the global is not set automatically. Doing it explicitly fixes it.
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  ;(window as any).L = L
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('leaflet-providers')
+}
 
 export interface MapMember {
   userId: string
