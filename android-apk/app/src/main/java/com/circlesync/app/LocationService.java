@@ -104,7 +104,7 @@ public class LocationService extends Service {
         }
 
         isRunning = true;
-        startForeground(NOTIFICATION_ID, buildNotification("Connecting..."));
+        startForeground(NOTIFICATION_ID, buildNotification("Sharing your location"));
 
         if (webSocket == null || !wsConnected) {
             connectWebSocket();
