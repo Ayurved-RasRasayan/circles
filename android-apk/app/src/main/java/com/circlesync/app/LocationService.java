@@ -161,7 +161,9 @@ public class LocationService extends Service {
                 @Override
                 public void onAvailable(Network network) {
                     Log.i(TAG, "Network available");
-                    if (!wsConnected && !destroyed) {
+                    // Debounce: only connect if we have NO WebSocket at all.
+                    // We do NOT reconnect if a WS already exists, even if the state is uncertain.
+                    if (webSocket == null && !destroyed) {
                         reconnectAttempt = 0;
                         handler.post(() -> connectWebSocket());
                     }
