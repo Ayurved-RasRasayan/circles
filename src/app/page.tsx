@@ -944,11 +944,11 @@ function CircleView({
       </div>
 
       {/* Top bar overlay */}
-      <div className="relative z-[1000] flex items-center gap-2 p-3 bg-gradient-to-b from-slate-900/80 to-transparent">
+      <div className="relative z-[1000] flex items-center justify-end gap-2 p-3 bg-gradient-to-b from-slate-900/80 to-transparent">
         <Button variant="secondary" size="icon" onClick={onClose} className="bg-white/95 hover:bg-white shadow-lg">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1 bg-white/95 backdrop-blur rounded-lg px-3 py-2 shadow-lg">
+        <div className="w-[calc(50%-8px)] max-w-md bg-white/95 backdrop-blur rounded-lg px-3 py-2 shadow-lg">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <div className="font-bold text-slate-900 truncate text-sm">{circle.name}</div>

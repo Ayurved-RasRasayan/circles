@@ -82,7 +82,7 @@ export default function MapView({ members, followUserId, onRecenter, onFlyToUser
     const map = L.map(containerRef.current, {
       center: [20, 0],
       zoom: 2,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: true,
     })
 
@@ -97,7 +97,10 @@ export default function MapView({ members, followUserId, onRecenter, onFlyToUser
       'Streets': streetsLayer,
       'Satellite': satelliteLayer,
       'Terrain': terrainLayer,
-    }, {}, { position: 'bottomleft', collapsed: true }).addTo(map)
+    }, {}, { position: 'topleft', collapsed: true }).addTo(map)
+
+    // Zoom control (moved to bottom-right so it does not collide with the layer switcher)
+    L.control.zoom({ position: 'bottomright' }).addTo(map)
 
     // Add locate control
     L.control.locate = function () {} as any
