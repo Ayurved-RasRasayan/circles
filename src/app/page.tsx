@@ -358,7 +358,7 @@ export default function Home() {
           watchIdRef.current = null
         }
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
+      { enableHighAccuracy: false, maximumAge: 30000, timeout: 60000 }
     )
   }, [toast, activeCircle, user, refreshValue, refreshUnit])
 
