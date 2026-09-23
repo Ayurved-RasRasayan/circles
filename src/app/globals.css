@@ -120,3 +120,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Push the Leaflet layers control below the header panel */
+.leaflet-top.leaflet-left {
+  top: 80px; /* adjust if the header panel is taller on mobile */
+}
+
+/* On small screens, push it down more because the header wraps to 2 lines */
+@media (max-width: 640px) {
+  .leaflet-top.leaflet-left {
+    top: 90px;
+  }
+}
